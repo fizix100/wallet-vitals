@@ -23,6 +23,31 @@ class SourceMetadata(StrictModel):
     rules_version: str = "aave-v1"
 
 
+class OnchainEvidence(StrictModel):
+    provider: Literal["ethereum-json-rpc"] = "ethereum-json-rpc"
+    chain_id: Literal[1] = 1
+    block_number: int
+    block_hash: str
+    block_timestamp: datetime
+    addresses_provider: str
+    pool_address: str
+    oracle_address: str
+    base_currency_unit: int = 10**8
+    total_collateral_usd: Decimal
+    total_debt_usd: Decimal
+    health_factor: Decimal | None
+    e_mode_category: int = 0
+    verification: Literal["pending", "matched"] = "pending"
+
+
+class PriceEvidence(StrictModel):
+    provider: Literal["aave-oracle-eth-call"] = "aave-oracle-eth-call"
+    oracle_address: str
+    block_number: int
+    block_hash: str
+    method: Literal["getAssetPrice(address)"] = "getAssetPrice(address)"
+
+
 class PositionAsset(StrictModel):
     address: str
     symbol: str
@@ -36,6 +61,7 @@ class PositionAsset(StrictModel):
     collateral_enabled: bool
     e_mode_applied: bool = False
     evidence_ref: str
+    price_evidence: PriceEvidence | None = None
 
 
 class EvidenceSnapshot(StrictModel):
@@ -43,6 +69,7 @@ class EvidenceSnapshot(StrictModel):
     source: SourceMetadata
     assets: list[PositionAsset]
     warnings: list[str] = Field(default_factory=list)
+    onchain_evidence: OnchainEvidence | None = None
 
 
 RiskSeverity = Literal["no_debt", "healthy", "warning", "danger", "liquidatable"]
@@ -74,6 +101,7 @@ class EvidenceReceipt(StrictModel):
     rules_version: str
     scenario_assumptions: list[str]
     evidence_refs: list[str]
+    onchain_evidence: OnchainEvidence | None = None
 
 
 class RiskReport(StrictModel):

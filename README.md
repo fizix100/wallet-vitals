@@ -14,20 +14,27 @@ No sign-up, Telegram account, wallet connection, signature, or private key is re
 - Computes health factor from liquidation-weighted collateral and total debt using deterministic Decimal/RAY math.
 - Shows a Liquidation Buffer and fixed `-5%`, `-10%`, and `-20%` collateral-only Stress Ladder.
 - Stores comparable snapshots and reports collateral, debt, and health-factor changes without claiming unsupported causality.
-- Attaches the Graph deployment, source block/time, query time, rules version, scenario assumptions, and position evidence references to every report.
+- Reads Aave's own oracle at the indexed block hash and cross-checks the reconstructed account against `getUserAccountData` at that same block.
+- Attaches the Graph deployment, source block/time, query time, rules version, scenario assumptions, position references, oracle/pool addresses, and contract cross-check to every report.
 - Uses OpenAI only to explain locked, structured facts. If the model is unconfigured or unavailable, the complete report still works with deterministic explanations.
-- Fails closed when The Graph reports indexing errors, stale blocks, malformed values, or provider failures.
+- Fails closed on stale/indexing-error blocks, malformed data, RPC failures, block mismatches, unsupported eMode, and materially inconsistent indexed accounts.
 
 ## Why The Graph is load-bearing
 
-The live product queries the [`protocol-v3` Aave V3 Ethereum Subgraph](https://thegraph.com/explorer/subgraphs/Cd2gEDVeqnjBn1hSeqFMitw8Q1iiyV9FYUZkLNRcL87g?view=Query) through The Graph Network gateway. All position balances, reserve indices and rates, liquidation thresholds, oracle prices, and source metadata originate in that query. Removing `GRAPH_API_KEY` makes new analyses return `503`; there is no mock or alternate data path in the running app.
+The live product queries the [`protocol-v3` Aave V3 Ethereum Subgraph](https://thegraph.com/explorer/subgraphs/Cd2gEDVeqnjBn1hSeqFMitw8Q1iiyV9FYUZkLNRcL87g?view=Query) through The Graph Network gateway. Position balances, reserve indices and rates, liquidation thresholds, collateral flags, and indexed source metadata originate in that query. Removing `GRAPH_API_KEY` makes new analyses return `503`; there is no mock or alternative position-discovery path in the running app.
+
+Live testing found that the Subgraph's block was current while some indexed prices had stopped updating in 2024. Production therefore does **not** use its price fields for valuation. A read-only Ethereum RPC supplies `getAssetPrice(address)` from Aave's oracle, with the pool and oracle resolved from the official [Ethereum addresses provider](https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Ethereum.sol) at the same block. Every contract call uses EIP-1898 `{blockHash, requireCanonical: true}`. Chain ID, block number, timestamp, and any Graph-provided hash must agree; there is no fallback to `latest` or external market quotes. The Graph remains necessary for positions and historical comparisons.
+
+The reconstructed account is checked against Aave's [`getUserAccountData`](https://github.com/aave/aave-v3-origin/blob/main/src/contracts/interfaces/IPool.sol). Totals must agree within 1 part per million or $0.000001 (whichever is greater); health factor allows 0.0002 absolute or 1 basis point relative for protocol/threshold rounding. Zero/nonzero balances and severity must agree. These are numerical consistency checks, not guarantees of investment safety or independent RPC consensus. Oracle values describe what Aave used at that block; underlying feed freshness is not independently certified.
 
 The browser never receives the Graph or OpenAI key. The gateway call is server-side and authenticates with a Bearer header rather than putting the key in a URL.
 
 ```text
 Public address
       ↓
-The Graph → Aave normalized evidence snapshot
+The Graph → indexed positions + evidence block
+                           ↓
+Same-block Aave oracle + account cross-check (read-only RPC)
       ↓
 Deterministic risk engine → snapshot history
       ↓
@@ -58,6 +65,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The JSON API is documented 
 | `GRAPH_API_KEY` | Yes | Server-only The Graph gateway credential |
 | `GRAPH_SUBGRAPH_ID` | Yes | `Cd2gEDVeqnjBn1hSeqFMitw8Q1iiyV9FYUZkLNRcL87g` (Aave V3 Ethereum) |
 | `GRAPH_MAX_AGE_SECONDS` | No | `900`; analysis fails if the indexed block is older |
+| `ETHEREUM_RPC_URL` | No | `https://ethereum-rpc.publicnode.com`; mainnet RPC supporting hash-pinned `eth_call`, no extra key required by default |
 | `OPENAI_API_KEY` | For AI demo | Optional at runtime; required to demonstrate the AI prize path |
 | `OPENAI_MODEL` | No | `gpt-5.6-luna` |
 | `DATABASE_PATH` | No | `data/wallet_vitals.db` |
@@ -86,9 +94,9 @@ uv run ruff format --check src tests
 uv run pytest
 ```
 
-Unit and integration tests cover Aave RAY interest math, liquidation-weighted health factor, stress monotonicity, snapshot comparability, Graph freshness/indexing failure, SQLite idempotency, and Web behavior with the data provider disabled. Test fixtures never appear in the production data path.
+Unit and integration tests cover Aave RAY interest math, liquidation-weighted health factor, stress monotonicity, snapshot comparability, Graph freshness/indexing failure, hash-pinned oracle reads, wrong networks, missing prices, RPC failure, account mismatches (including false empty wallets), retired reports, SQLite idempotency, and Web behavior with the data provider disabled. Test fixtures never appear in the production data path.
 
-For a live qualification smoke test, set `GRAPH_API_KEY` and `OPENAI_API_KEY`, start the app, analyze a public address with a non-empty Ethereum Aave V3 position, and compare the displayed block and health factor with the Aave interface. Confirm the report labels the narrative `AI · evidence locked`. Never commit `.env` or paste either key into a browser URL.
+For a live smoke test, start the app and analyze a public address with a non-empty, non-eMode Ethereum Aave V3 position. The public address `0xc950fe241c50f93d872edb5a97066474c84c2394` was validated on 2026-09-09; its future position can change. Expand the receipt and inspect the reconstructed and contract health factors at the same block. Confirm the narrative label is `AI · evidence locked` if demonstrating the AI path. Never commit `.env` or paste either key into a browser URL. See [LIVE_VALIDATION.md](LIVE_VALIDATION.md) for actual checks and limitations.
 
 ## Risk model and limitations
 
@@ -99,7 +107,9 @@ health factor = Σ(collateral USDᵢ × liquidation thresholdᵢ) / total debt U
 liquidation buffer = 1 − 1 / health factor
 ```
 
-The buffer and Stress Ladder hold debt USD value and protocol parameters constant while moving every enabled collateral price by the same percentage. They are static sensitivity tests, not forecasts, guarantees, liquidation-time estimates, or financial advice. Aave eMode thresholds are applied only when the user's and reserve's indexed categories match.
+The buffer and Stress Ladder hold debt USD value and protocol parameters constant while moving every enabled collateral price by the same percentage. They are static sensitivity tests, not forecasts, guarantees, liquidation-time estimates, or financial advice. They are deliberately collateral-only shocks even when an asset also appears on the debt side. eMode is currently rejected: legacy indexed category matching is insufficient for modern category bitmap rules. Incomplete, negative-balance, or inconsistent indexed positions are rejected rather than silently omitted. A historical report does not establish the wallet's current liquidation state.
+
+Reports using the retired `aave-v1` indexed-price rules cannot be served or explained; the user must run a fresh check under `aave-v2-pinned-oracle`.
 
 Severity labels are a UI aid around the protocol-native health factor: `liquidatable ≤ 1.00`, `danger ≤ 1.10`, `warning ≤ 1.25`, then `healthy`. A zero-debt position is explicitly `no_debt`.
 
@@ -128,7 +138,7 @@ The current qualifying target is **The Graph — Best AI Tooling or AI Use Case 
 
 ```text
 src/wallet_vitals/
-  graph/         The Graph client and Aave V3 normalization
+  graph/         The Graph positions, same-block oracle, and account cross-check
   domain/        strict evidence/report models and deterministic risk math
   storage/       SQLite snapshot and expiring report store
   ai/            optional OpenAI Responses adapter with deterministic fallback

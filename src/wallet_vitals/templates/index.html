@@ -38,7 +38,7 @@
       </section>
 
       <section id="loading" class="loading shell" hidden aria-live="polite">
-        <span></span><p>Reading the indexed Aave position and rebuilding accrued balances…</p>
+        <span></span><p>Reading The Graph positions and checking Aave oracle evidence at the same block…</p>
       </section>
 
       <section id="report" class="report shell" hidden aria-live="polite">
@@ -53,7 +53,7 @@
 
         <div class="metric-grid">
           <article class="metric primary">
-            <span>Health factor · indexed estimate</span><strong id="health-factor">—</strong>
+            <span>Health factor · reconstructed</span><strong id="health-factor">—</strong>
             <small>Liquidatable at ≤ 1.00</small>
           </article>
           <article class="metric">
@@ -69,6 +69,7 @@
             <small>Stable + variable debt</small>
           </article>
         </div>
+        <p id="verification-status" class="form-note"></p>
 
         <div class="report-grid">
           <article class="panel">
@@ -101,12 +102,13 @@
           <summary><span><small>Evidence receipt</small><b>Block, deployment, assumptions, references</b></span><i>＋</i></summary>
           <div id="receipt-content"></div>
         </details>
-        <p class="disclaimer">Calculated from indexed Aave balances and prices at the receipt block. Values can differ from the current Aave contract, including indexed oracle differences. Verify in Aave before acting. Scenarios use fixed assumptions and are not forecasts.</p>
+        <div id="report-warnings" class="disclaimer"></div>
+        <p class="disclaimer">The Graph positions, Aave oracle prices, and the account cross-check share one evidence block. Reconstructed metrics may differ slightly due to protocol rounding. This is a historical snapshot, not the current liquidation state or financial advice. Scenarios hold debt value fixed and are not forecasts. eMode is not supported.</p>
       </section>
 
       <section class="principles shell">
-        <article><b>01</b><h3>Protocol-native</h3><p>Uses Aave balances, indices, rates, prices, and liquidation thresholds.</p></article>
-        <article><b>02</b><h3>Fail closed</h3><p>Stale blocks and indexing errors stop analysis instead of hiding uncertainty.</p></article>
+        <article><b>01</b><h3>Protocol-native</h3><p>The Graph positions meet Aave oracle prices at the same Ethereum block.</p></article>
+        <article><b>02</b><h3>Fail closed</h3><p>Stale blocks, indexing errors, and account mismatches stop analysis.</p></article>
         <article><b>03</b><h3>Verifiable</h3><p>Every report carries its evidence block, deployment, assumptions, and references.</p></article>
       </section>
     </main>

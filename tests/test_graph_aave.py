@@ -26,7 +26,7 @@ def graph_payload(timestamp: int) -> dict[str, Any]:
         "_meta": {
             "deployment": "QmDeployment",
             "hasIndexingErrors": False,
-            "block": {"number": 12345, "timestamp": timestamp, "hash": "0xabc"},
+            "block": {"number": 12345, "timestamp": timestamp, "hash": "0x" + "a" * 64},
         },
         "user": {
             "id": "0x1111111111111111111111111111111111111111",
@@ -116,3 +116,69 @@ async def test_missing_asset_price_stops_analysis() -> None:
     adapter = AaveV3Subgraph(FakeGraphClient(payload), "subgraph-id")
     with pytest.raises(GraphResponseError, match="Missing oracle price"):
         await adapter.fetch_snapshot("0x1111111111111111111111111111111111111111")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("indexed_price", ["stale", "missing"])
+async def test_pinned_oracle_replaces_bad_indexed_price_without_using_it(indexed_price) -> None:
+    import httpx
+    from test_oracle import BLOCK_HASH, RpcFixture
+
+    from wallet_vitals.graph.oracle import AaveOracleClient
+
+    timestamp = int(datetime.now(UTC).timestamp())
+    payload = graph_payload(timestamp)
+    payload["_meta"]["block"].update(number=100, hash=BLOCK_HASH)
+    position = payload["user"]["reserves"][0]
+    position["scaledVariableDebt"] = 5 * 10**17
+    position["reserve"]["price"]["lastUpdateTimestamp"] = 0
+    position["reserve"]["price"]["priceInEth"] = 1  # Must never value the position with this.
+    if indexed_price == "missing":
+        position["reserve"]["price"] = None
+    fixture = RpcFixture()
+    fixture.timestamp = timestamp
+    oracle = AaveOracleClient("https://rpc.test", transport=httpx.MockTransport(fixture.handle))
+    try:
+        adapter = AaveV3Subgraph(FakeGraphClient(payload), "subgraph-id", oracle_client=oracle)
+        snapshot = await adapter.fetch_snapshot(payload["user"]["id"])
+        assert snapshot.assets[0].price_usd == 2000
+        assert snapshot.assets[0].price_evidence.block_hash == BLOCK_HASH
+        assert snapshot.onchain_evidence.verification == "matched"
+        assert snapshot.source.rules_version == "aave-v2-pinned-oracle"
+    finally:
+        await oracle.close()
+
+
+@pytest.mark.asyncio
+async def test_missing_graph_user_is_not_treated_as_empty_if_contract_has_debt() -> None:
+    import httpx
+    from test_oracle import BLOCK_HASH, RpcFixture
+
+    from wallet_vitals.graph.errors import GraphResponseError
+    from wallet_vitals.graph.oracle import AaveOracleClient
+
+    timestamp = int(datetime.now(UTC).timestamp())
+    payload = graph_payload(timestamp)
+    payload["_meta"]["block"].update(number=100, hash=BLOCK_HASH)
+    payload["user"] = None
+    fixture = RpcFixture()
+    fixture.timestamp = timestamp
+    oracle = AaveOracleClient("https://rpc.test", transport=httpx.MockTransport(fixture.handle))
+    try:
+        adapter = AaveV3Subgraph(FakeGraphClient(payload), "subgraph-id", oracle_client=oracle)
+        with pytest.raises(GraphResponseError, match="do not reconcile"):
+            await adapter.fetch_snapshot("0x" + "1" * 40)
+    finally:
+        await oracle.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad_hash", [123, "0xabc", ""])
+async def test_malformed_graph_hash_is_rejected(bad_hash) -> None:
+    from wallet_vitals.graph.errors import GraphResponseError
+
+    payload = graph_payload(int(datetime.now(UTC).timestamp()))
+    payload["_meta"]["block"]["hash"] = bad_hash
+    adapter = AaveV3Subgraph(FakeGraphClient(payload), "subgraph-id")
+    with pytest.raises(GraphResponseError, match="block hash"):
+        await adapter.fetch_snapshot("0x" + "1" * 40)

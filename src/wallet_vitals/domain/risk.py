@@ -13,7 +13,7 @@ from wallet_vitals.domain.models import (
 
 RAY = 10**27
 SECONDS_PER_YEAR = 365 * 24 * 60 * 60
-RULES_VERSION = "aave-v1"
+RULES_VERSION = "aave-v2-pinned-oracle"
 MONEY_QUANTUM = Decimal("0.01")
 HF_QUANTUM = Decimal("0.0001")
 
@@ -161,6 +161,7 @@ def compare_snapshots(current: EvidenceSnapshot, previous: EvidenceSnapshot | No
         and previous.source.subgraph_id == current.source.subgraph_id
         and previous.source.deployment == current.source.deployment
         and previous.source.rules_version == current.source.rules_version
+        and bool(previous.onchain_evidence) == bool(current.onchain_evidence)
         and previous.source.block_number < current.source.block_number
     )
     if not comparable:
@@ -197,7 +198,8 @@ def build_evidence_receipt(snapshot: EvidenceSnapshot) -> EvidenceReceipt:
         block_number=snapshot.source.block_number,
         block_timestamp=snapshot.source.block_timestamp,
         queried_at=snapshot.source.queried_at,
-        rules_version=RULES_VERSION,
+        rules_version=snapshot.source.rules_version,
+        onchain_evidence=snapshot.onchain_evidence,
         scenario_assumptions=[
             "All enabled collateral USD prices move by the same percentage.",
             "Debt USD value remains constant.",

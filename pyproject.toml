@@ -12,6 +12,7 @@ license = { file = "LICENSE" }
 dependencies = [
   "aiosqlite>=0.22,<1",
   "eth-utils>=6,<7",
+  "eth-hash[pycryptodome]>=0.7,<1",
   "fastapi[standard]>=0.141,<0.142",
   "httpx>=0.28,<0.29",
   "jinja2>=3.1,<4",

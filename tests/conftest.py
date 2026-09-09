@@ -6,6 +6,7 @@ from decimal import Decimal
 import pytest
 
 from wallet_vitals.domain.models import EvidenceSnapshot, PositionAsset, SourceMetadata
+from wallet_vitals.domain.risk import RULES_VERSION
 
 
 @pytest.fixture
@@ -14,6 +15,7 @@ def evidence_snapshot() -> EvidenceSnapshot:
     return EvidenceSnapshot(
         address="0x1111111111111111111111111111111111111111",
         source=SourceMetadata(
+            rules_version=RULES_VERSION,
             subgraph_id="test-subgraph",
             deployment="test-deployment",
             block_number=100,

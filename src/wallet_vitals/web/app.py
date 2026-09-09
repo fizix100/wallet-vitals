@@ -21,6 +21,7 @@ from wallet_vitals.domain.models import AnalyzeRequest, ExplainRequest, ExplainR
 from wallet_vitals.graph.aave import AaveV3Subgraph
 from wallet_vitals.graph.client import GraphClient
 from wallet_vitals.graph.errors import GraphConfigurationError, GraphError
+from wallet_vitals.graph.oracle import AaveOracleClient
 from wallet_vitals.storage.sqlite import SQLiteStore
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
@@ -30,10 +31,11 @@ templates = Jinja2Templates(directory=PACKAGE_ROOT / "templates")
 def create_app(settings: Settings | None = None) -> FastAPI:
     config = settings or Settings()
     graph_client: GraphClient | None = None
+    oracle_client: AaveOracleClient | None = None
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        nonlocal graph_client
+        nonlocal graph_client, oracle_client
         store = SQLiteStore(config.database_path)
         await store.initialize()
         key = config.graph_api_key.get_secret_value() if config.graph_api_key else ""
@@ -45,6 +47,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         subgraph: AaveV3Subgraph | None = None
         if key:
+            oracle_client = AaveOracleClient(
+                config.ethereum_rpc_url, config.ethereum_rpc_timeout_seconds
+            )
             graph_client = GraphClient(
                 config.graph_endpoint,
                 key,
@@ -54,6 +59,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 graph_client,
                 config.graph_subgraph_id,
                 config.graph_max_age_seconds,
+                oracle_client=oracle_client,
             )
         app.state.service = AnalysisService(
             subgraph,
@@ -68,6 +74,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         if graph_client is not None:
             await graph_client.close()
+        if oracle_client is not None:
+            await oracle_client.close()
 
     app = FastAPI(
         title=config.app_name,

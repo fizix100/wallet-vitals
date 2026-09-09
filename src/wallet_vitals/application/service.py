@@ -10,6 +10,7 @@ from eth_utils import is_address, to_normalized_address
 from wallet_vitals.ai.narrator import RiskNarrator
 from wallet_vitals.domain.models import ExplainResponse, RiskReport
 from wallet_vitals.domain.risk import (
+    RULES_VERSION,
     build_evidence_receipt,
     build_stress_ladder,
     calculate_snapshot_risk,
@@ -118,6 +119,8 @@ class AnalysisService:
         report = await self._store.get_report(report_id)
         if report is None:
             raise ReportNotFoundError("Report not found or expired.")
+        if report.evidence_receipt.rules_version != RULES_VERSION:
+            raise ReportNotFoundError("This report used retired evidence rules. Run a fresh check.")
         return report
 
     async def explain(self, report_id: str, intent: str) -> ExplainResponse:

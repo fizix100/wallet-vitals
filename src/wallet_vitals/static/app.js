@@ -72,8 +72,14 @@ function renderReport(report) {
   `).join("") : `<tr><td colspan="5">No active Aave supply or debt positions were found.</td></tr>`;
 
   const receipt = report.evidence_receipt;
+  const onchain = receipt.onchain_evidence;
+  document.querySelector("#verification-status").textContent = onchain?.verification === "matched"
+    ? `Aave account cross-check passed · block ${receipt.block_number} · read-only`
+    : "No onchain account cross-check is available for this report.";
+  document.querySelector("#report-warnings").textContent = (report.warnings || []).join(" ");
   document.querySelector("#receipt-content").innerHTML = `
-    <dl><dt>Provider</dt><dd>The Graph</dd><dt>Network</dt><dd>${escapeHtml(receipt.network)}</dd><dt>Block</dt><dd>${receipt.block_number}</dd><dt>Block time</dt><dd>${escapeHtml(new Date(receipt.block_timestamp).toLocaleString())}</dd><dt>Queried</dt><dd>${escapeHtml(new Date(receipt.queried_at).toLocaleString())}</dd><dt>Deployment</dt><dd><code>${escapeHtml(receipt.deployment)}</code></dd><dt>Subgraph ID</dt><dd><code>${escapeHtml(receipt.subgraph_id)}</code></dd><dt>Rules</dt><dd>${escapeHtml(receipt.rules_version)}</dd></dl>
+    <dl><dt>Position provider</dt><dd>The Graph</dd><dt>Network</dt><dd>${escapeHtml(receipt.network)}</dd><dt>Block</dt><dd>${receipt.block_number}</dd><dt>Block time</dt><dd>${escapeHtml(new Date(receipt.block_timestamp).toLocaleString())}</dd><dt>Queried</dt><dd>${escapeHtml(new Date(receipt.queried_at).toLocaleString())}</dd><dt>Deployment</dt><dd><code>${escapeHtml(receipt.deployment)}</code></dd><dt>Subgraph ID</dt><dd><code>${escapeHtml(receipt.subgraph_id)}</code></dd><dt>Rules</dt><dd>${escapeHtml(receipt.rules_version)}</dd></dl>
+    ${onchain ? `<h4>Same-block Aave contract evidence</h4><dl><dt>Price source</dt><dd>Aave oracle · getAssetPrice(address)</dd><dt>Oracle</dt><dd><code>${escapeHtml(onchain.oracle_address)}</code></dd><dt>Pool</dt><dd><code>${escapeHtml(onchain.pool_address)}</code></dd><dt>Block hash</dt><dd><code>${escapeHtml(onchain.block_hash)}</code></dd><dt>Contract health factor</dt><dd>${escapeHtml(onchain.health_factor ?? "No debt")}</dd><dt>Account cross-check</dt><dd>${escapeHtml(onchain.verification)} · bounded rounding tolerance</dd></dl>` : ""}
     <h4>Scenario assumptions</h4><ul>${receipt.scenario_assumptions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
     <h4>Evidence references</h4><ul>${receipt.evidence_refs.map((item) => `<li><code>${escapeHtml(item)}</code></li>`).join("") || "<li>No active position references.</li>"}</ul>`;
 
@@ -141,10 +147,15 @@ document.querySelectorAll("[data-intent]").forEach((button) => {
 
 document.querySelector("#share-report").addEventListener("click", async (event) => {
   if (!activeReportId) return;
+  const button = event.currentTarget;
   const url = `${window.location.origin}/reports/${encodeURIComponent(activeReportId)}`;
-  await navigator.clipboard.writeText(url);
-  event.currentTarget.textContent = "Copied";
-  setTimeout(() => { event.currentTarget.textContent = "Copy report link"; }, 1600);
+  try {
+    await navigator.clipboard.writeText(url);
+    button.textContent = "Copied";
+    setTimeout(() => { button.textContent = "Copy report link"; }, 1600);
+  } catch {
+    showError(`Copy this report link: ${url}`);
+  }
 });
 
 const initialReportId = document.body.dataset.reportId;

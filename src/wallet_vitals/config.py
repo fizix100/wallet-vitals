@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     graph_timeout_seconds: float = Field(default=18.0, gt=0, le=60)
     graph_max_age_seconds: int = Field(default=900, ge=60, le=7200)
 
+    ethereum_rpc_url: str = "https://ethereum-rpc.publicnode.com"
+    ethereum_rpc_timeout_seconds: float = Field(default=15.0, gt=0, le=60)
+
     openai_api_key: SecretStr | None = None
     openai_model: str = "gpt-5.6-luna"
     openai_timeout_seconds: float = Field(default=20.0, gt=0, le=60)

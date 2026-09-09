@@ -5,7 +5,11 @@ from decimal import Decimal
 import pytest
 
 from wallet_vitals.ai.narrator import RiskNarrator
-from wallet_vitals.application.service import AnalysisService, InvalidAddressError
+from wallet_vitals.application.service import (
+    AnalysisService,
+    InvalidAddressError,
+    ReportNotFoundError,
+)
 from wallet_vitals.domain.models import EvidenceSnapshot
 from wallet_vitals.storage.sqlite import SQLiteStore
 
@@ -55,3 +59,17 @@ def test_service_rejects_non_address(evidence_snapshot: EvidenceSnapshot, tmp_pa
 
     with pytest.raises(InvalidAddressError):
         service.normalize_address("vitalik.eth")
+
+
+@pytest.mark.asyncio
+async def test_retired_price_rules_cannot_be_served_or_explained(tmp_path, evidence_snapshot):
+    store = SQLiteStore(tmp_path / "retired.db")
+    await store.initialize()
+    service = AnalysisService(FakeSubgraph(evidence_snapshot), store, RiskNarrator(None, "unused"))
+    report = await service.analyze(evidence_snapshot.address)
+    report.evidence_receipt.rules_version = "aave-v1"
+    await store.save_report(report)
+    with pytest.raises(ReportNotFoundError, match="retired evidence"):
+        await service.get_report(report.report_id)
+    with pytest.raises(ReportNotFoundError, match="retired evidence"):
+        await service.explain(report.report_id, "what_changed")

@@ -24,7 +24,7 @@ At the audited baseline, the application did not run successfully on our modern 
 Event-period work is isolated under `src/wallet_vitals/` and in the event-period commits. It includes:
 
 - A server-side The Graph Network client and Aave V3 Ethereum Subgraph adapter for Subgraph ID `Cd2gEDVeqnjBn1hSeqFMitw8Q1iiyV9FYUZkLNRcL87g`. The runtime records the current deployment returned by `_meta` in every receipt.
-- Aave position normalization and evidence snapshots using scaled balances, reserve indices, rates, oracle values, liquidation thresholds, collateral flags, and matching eMode categories.
+- Aave position normalization using indexed scaled balances, reserve indices, rates, liquidation thresholds, and collateral flags; same-block Aave oracle prices and an account cross-check via read-only Ethereum RPC. Unsupported eMode positions are rejected.
 - Deterministic RAY/Decimal risk math, Liquidation Buffer, Risk Delta, and a fixed-assumption Stress Ladder.
 - An optional OpenAI Responses narrative adapter that receives only precomputed structured facts and falls back to deterministic explanations.
 - A new accountless FastAPI Web interface and JSON API, shareable expiring reports, SQLite persistence, responsive styling, tests, CI, and a single-process container deployment.
@@ -43,7 +43,7 @@ Files retained or adapted from upstream remain covered by the MIT license and pr
 - Setup instructions: [README — Run locally](README.md#run-locally)
 - Live Graph data source: [README — Why The Graph is load-bearing](README.md#why-the-graph-is-load-bearing)
 - Test command: `uv run ruff check src tests && uv run ruff format --check src tests && uv run pytest`
-- Current local result: 12 tests passed on Python 3.12; live provider verification remains credential-gated
+- Current verification: see [LIVE_VALIDATION.md](LIVE_VALIDATION.md) for test results and live same-block account checks. Credentials have been validated; public hosting and video remain separate submission gates.
 - Demo video: pending final live deployment and recording
 
 ## AI assistance disclosure

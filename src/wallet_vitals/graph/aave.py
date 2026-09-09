@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation, localcontext
 from typing import Any
 
-from wallet_vitals.domain.models import EvidenceSnapshot, PositionAsset, SourceMetadata
+from wallet_vitals.domain.models import (
+    EvidenceSnapshot,
+    PositionAsset,
+    PriceEvidence,
+    SourceMetadata,
+)
 from wallet_vitals.domain.risk import (
     RULES_VERSION,
     accrue_scaled_balance,
@@ -18,6 +24,7 @@ from wallet_vitals.graph.errors import (
     GraphResponseError,
     GraphStaleDataError,
 )
+from wallet_vitals.graph.oracle import AaveOracleClient, verify_account
 
 AAVE_USER_QUERY = """
 query WalletVitalsAaveUser($address: ID!) {
@@ -80,6 +87,8 @@ def _mapping(value: Any, label: str) -> dict[str, Any]:
 
 
 def _integer(value: Any, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        raise GraphResponseError(f"Invalid integer for {label} in Aave data.")
     try:
         result = int(value)
     except (TypeError, ValueError) as exc:
@@ -106,11 +115,13 @@ class AaveV3Subgraph:
         subgraph_id: str,
         max_block_age_seconds: int = 900,
         max_price_age_seconds: int = 86400,
+        oracle_client: AaveOracleClient | None = None,
     ) -> None:
         self._client = client
         self._subgraph_id = subgraph_id
         self._max_block_age_seconds = max_block_age_seconds
         self._max_price_age_seconds = max_price_age_seconds
+        self._oracle_client = oracle_client
 
     async def fetch_snapshot(self, address: str) -> EvidenceSnapshot:
         queried_at = datetime.now(UTC)
@@ -123,10 +134,16 @@ class AaveV3Subgraph:
         deployment = str(meta.get("deployment") or "").strip()
         if not deployment:
             raise GraphResponseError("The Aave subgraph deployment identifier is missing.")
-        if bool(meta.get("hasIndexingErrors")):
+        if meta.get("hasIndexingErrors") is not False:
             raise GraphIndexingError(
                 "The Aave subgraph reports indexing errors; analysis was stopped."
             )
+        graph_block_hash = block.get("hash")
+        if graph_block_hash is not None and (
+            not isinstance(graph_block_hash, str)
+            or not re.fullmatch(r"0x[0-9a-fA-F]{64}", graph_block_hash)
+        ):
+            raise GraphResponseError("Invalid Graph evidence block hash.")
         age_seconds = (queried_at - block_timestamp).total_seconds()
         if age_seconds > self._max_block_age_seconds:
             raise GraphStaleDataError(
@@ -138,18 +155,12 @@ class AaveV3Subgraph:
         user = data.get("user")
         assets: list[PositionAsset] = []
         warnings: list[str] = []
+        oracle_snapshot = None
+        reserves: list[Any] = []
         if user is not None:
             user_data = _mapping(user, "user")
-            user_e_mode = user_data.get("eModeCategoryId")
-            user_e_mode_id: str | None = None
-            user_e_mode_threshold = 0
-            if user_e_mode is not None:
-                e_mode = _mapping(user_e_mode, "user eMode category")
-                user_e_mode_id = str(e_mode.get("id") or "") or None
-                user_e_mode_threshold = _integer(
-                    e_mode.get("liquidationThreshold"), "eMode liquidation threshold"
-                )
-
+            if user_data.get("eModeCategoryId") is not None:
+                raise GraphResponseError("Indexed eMode positions are not supported yet.")
             reserves = user_data.get("reserves")
             if not isinstance(reserves, list):
                 raise GraphResponseError("Missing reserve positions in Aave data.")
@@ -157,6 +168,30 @@ class AaveV3Subgraph:
                 raise GraphResponseError(
                     "Reserve query reached its limit; evidence may be incomplete."
                 )
+        if self._oracle_client is not None:
+            active_addresses: list[str] = []
+            for item in reserves:
+                position = _mapping(item, "user reserve")
+                if any(
+                    _integer(position.get(field), field)
+                    for field in (
+                        "scaledATokenBalance",
+                        "scaledVariableDebt",
+                        "principalStableDebt",
+                    )
+                ):
+                    reserve = _mapping(position.get("reserve"), "reserve")
+                    active_addresses.append(str(reserve.get("underlyingAsset") or "").lower())
+            if len(set(active_addresses)) != len(active_addresses):
+                raise GraphResponseError("Duplicate reserve assets in indexed positions.")
+            oracle_snapshot = await self._oracle_client.fetch(
+                address, active_addresses, block_number, block_timestamp_raw, graph_block_hash
+            )
+            warnings.append(
+                "Prices are Aave oracle contract values at the receipt block, not market quotes. "
+                "Reading the oracle does not establish each underlying feed's update time."
+            )
+        if user is not None:
             for item in reserves:
                 position = _mapping(item, "user reserve")
                 raw_balances = [
@@ -170,28 +205,47 @@ class AaveV3Subgraph:
                 if not any(raw_balances):
                     continue
                 reserve = _mapping(position.get("reserve"), "reserve")
-                price = reserve.get("price")
-                if price is None:
-                    raise GraphResponseError(
-                        "Missing oracle price; position analysis is incomplete."
+                asset_address = str(reserve.get("underlyingAsset") or "").lower()
+                price_evidence = None
+                if oracle_snapshot is not None:
+                    price_usd = oracle_snapshot.prices[asset_address]
+                    proof = oracle_snapshot.evidence
+                    price_evidence = PriceEvidence(
+                        oracle_address=proof.oracle_address,
+                        block_number=proof.block_number,
+                        block_hash=proof.block_hash,
                     )
-                price_data = _mapping(price, "reserve price")
-                price_updated = _integer(price_data.get("lastUpdateTimestamp"), "price timestamp")
-                if block_timestamp_raw - price_updated > self._max_price_age_seconds:
-                    raise GraphStaleDataError(
-                        "An active asset's indexed oracle price is more than 24 hours old; "
-                        "risk analysis was stopped. The Graph block is current but its "
-                        "price data is not sufficiently fresh."
+                else:
+                    # Strict indexed-only mode is useful for adapter tests. The live app always
+                    # supplies the oracle client and fails closed if RPC evidence is unavailable.
+                    price = reserve.get("price")
+                    if price is None:
+                        raise GraphResponseError(
+                            "Missing oracle price; position analysis is incomplete."
+                        )
+                    price_data = _mapping(price, "reserve price")
+                    price_updated = _integer(
+                        price_data.get("lastUpdateTimestamp"), "price timestamp"
                     )
-                if price_updated > block_timestamp_raw:
-                    raise GraphResponseError("Oracle timestamp is later than the evidence block.")
-                oracle = _mapping(price_data.get("oracle"), "price oracle")
-                base_unit = _integer(oracle.get("baseCurrencyUnit"), "oracle base unit")
-                if base_unit != 10**8 or str(oracle.get("baseCurrency")).lower() not in {
-                    "usd",
-                    "0x0000000000000000000000000000000000000000",
-                }:
-                    raise GraphResponseError("Unsupported Aave oracle currency or unit.")
+                    if block_timestamp_raw - price_updated > self._max_price_age_seconds:
+                        raise GraphStaleDataError(
+                            "An active asset's indexed oracle price is too old; "
+                            "risk analysis was stopped."
+                        )
+                    if price_updated > block_timestamp_raw:
+                        raise GraphResponseError(
+                            "Oracle timestamp is later than the evidence block."
+                        )
+                    oracle = _mapping(price_data.get("oracle"), "price oracle")
+                    base_unit = _integer(oracle.get("baseCurrencyUnit"), "oracle base unit")
+                    if base_unit != 10**8 or str(oracle.get("baseCurrency")).lower() not in {
+                        "usd",
+                        "0x0000000000000000000000000000000000000000",
+                    }:
+                        raise GraphResponseError("Unsupported Aave oracle currency or unit.")
+                    price_usd = _decimal(price_data.get("priceInEth"), "oracle price") / Decimal(
+                        base_unit
+                    )
 
                 last_update = _integer(reserve.get("lastUpdateTimestamp"), "reserve last update")
                 elapsed = max(0, block_timestamp_raw - last_update)
@@ -234,9 +288,6 @@ class AaveV3Subgraph:
                     scale = Decimal(10) ** decimals
                     supply = Decimal(current_supply_raw) / scale
                     debt = Decimal(current_variable_debt_raw + current_stable_debt_raw) / scale
-                    price_usd = _decimal(price_data.get("priceInEth"), "oracle price") / Decimal(
-                        base_unit
-                    )
                     if price_usd <= 0:
                         if supply == 0 and debt == 0:
                             continue
@@ -244,23 +295,12 @@ class AaveV3Subgraph:
                     supply_usd = supply * price_usd
                     debt_usd = debt * price_usd
 
-                reserve_e_mode = reserve.get("eMode")
-                reserve_e_mode_id = (
-                    str(_mapping(reserve_e_mode, "reserve eMode").get("id") or "")
-                    if reserve_e_mode is not None
-                    else None
+                threshold = _integer(
+                    reserve.get("reserveLiquidationThreshold"), "reserve liquidation threshold"
                 )
-                e_mode_applied = bool(
-                    user_e_mode_id and reserve_e_mode_id and user_e_mode_id == reserve_e_mode_id
-                )
-                threshold = (
-                    user_e_mode_threshold
-                    if e_mode_applied
-                    else _integer(
-                        reserve.get("reserveLiquidationThreshold"),
-                        "reserve liquidation threshold",
-                    )
-                )
+                collateral_enabled = position.get("usageAsCollateralEnabledOnUser")
+                if not isinstance(collateral_enabled, bool) or threshold > 10_000:
+                    raise GraphResponseError("Invalid indexed collateral configuration.")
                 if (
                     current_supply_raw == 0
                     and current_variable_debt_raw == 0
@@ -269,7 +309,7 @@ class AaveV3Subgraph:
                     continue
                 assets.append(
                     PositionAsset(
-                        address=str(reserve.get("underlyingAsset") or "").lower(),
+                        address=asset_address,
                         symbol=str(reserve.get("symbol") or "UNKNOWN")[:24],
                         decimals=decimals,
                         supply=supply,
@@ -278,13 +318,13 @@ class AaveV3Subgraph:
                         supply_usd=supply_usd,
                         debt_usd=debt_usd,
                         liquidation_threshold_bps=threshold,
-                        collateral_enabled=bool(position.get("usageAsCollateralEnabledOnUser")),
-                        e_mode_applied=e_mode_applied,
+                        collateral_enabled=collateral_enabled and threshold > 0,
                         evidence_ref=f"aave-v3:user-reserve:{position.get('id')}",
+                        price_evidence=price_evidence,
                     )
                 )
 
-        return EvidenceSnapshot(
+        snapshot = EvidenceSnapshot(
             address=address.lower(),
             source=SourceMetadata(
                 subgraph_id=self._subgraph_id,
@@ -293,8 +333,12 @@ class AaveV3Subgraph:
                 block_timestamp=block_timestamp,
                 queried_at=queried_at,
                 has_indexing_errors=False,
-                rules_version=RULES_VERSION,
+                rules_version=RULES_VERSION if oracle_snapshot else "aave-v1",
             ),
             assets=assets,
             warnings=warnings,
+            onchain_evidence=oracle_snapshot.evidence if oracle_snapshot else None,
         )
+        if oracle_snapshot is not None:
+            verify_account(snapshot)
+        return snapshot

@@ -45,8 +45,9 @@ class RiskNarrator:
             "Do not predict prices, give financial advice, or suggest a transaction. Write one "
             "short paragraph in plain English without Markdown formatting. Mention the block "
             "number but do not reproduce deployment hashes or long position identifiers; "
-            "refer readers to the Evidence Receipt. Describe the health factor as an indexed "
-            "estimate. If a fact is unavailable, say so."
+            "refer readers to the Evidence Receipt. Describe the health factor as a reconstructed "
+            "snapshot metric, not a current guarantee. Positions are indexed by The Graph; "
+            "prices come from Aave's oracle at that same block. If a fact is unavailable, say so."
         )
         request_facts = {"intent": intent, "facts": facts}
         try:
