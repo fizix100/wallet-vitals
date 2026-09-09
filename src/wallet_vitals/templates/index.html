@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Evidence-grounded Aave V3 wallet risk analysis.">
+    <title>Wallet Vitals — Aave risk, with receipts</title>
+    <link rel="icon" href="{{ url_for('static', path='/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
+  </head>
+  <body data-report-id="{{ initial_report_id }}">
+    <header class="nav shell">
+      <a class="brand" href="/" aria-label="Wallet Vitals home">
+        <span class="brand-mark" aria-hidden="true">W</span>
+        <span>Wallet Vitals</span>
+      </a>
+      <span class="network"><i></i> Aave V3 · Ethereum</span>
+    </header>
+
+    <main>
+      <section class="hero shell">
+        <p class="eyebrow">Evidence-grounded risk copilot</p>
+        <h1>Know your liquidation risk<br>before the market does.</h1>
+        <p class="lede">Paste any public address. Get protocol-native health metrics, stress tests,
+          snapshot changes, and a receipt you can independently verify.</p>
+
+        <form id="analysis-form" class="address-form" novalidate>
+          <label class="sr-only" for="address">Ethereum wallet address</label>
+          <input id="address" name="address" autocomplete="off" spellcheck="false"
+            placeholder="0x… Ethereum address" maxlength="42" required>
+          <button type="submit"><span>Run risk check</span><b aria-hidden="true">→</b></button>
+        </form>
+        <p class="form-note">No wallet connection · No signature · Public onchain data only</p>
+        {% if not configured %}
+          <p class="config-warning">Demo data provider is not configured. Add <code>GRAPH_API_KEY</code> to run live checks.</p>
+        {% endif %}
+        <div id="error" class="error" role="alert" hidden></div>
+      </section>
+
+      <section id="loading" class="loading shell" hidden aria-live="polite">
+        <span></span><p>Reading the indexed Aave position and rebuilding accrued balances…</p>
+      </section>
+
+      <section id="report" class="report shell" hidden aria-live="polite">
+        <div class="report-head">
+          <div>
+            <p class="eyebrow">Position diagnosis</p>
+            <h2 id="report-address"></h2>
+          </div>
+          <span id="severity" class="severity"></span>
+        </div>
+        <button id="share-report" class="share-report" type="button">Copy report link</button>
+
+        <div class="metric-grid">
+          <article class="metric primary">
+            <span>Health factor</span><strong id="health-factor">—</strong>
+            <small>Liquidatable at ≤ 1.00</small>
+          </article>
+          <article class="metric">
+            <span>Liquidation buffer</span><strong id="buffer">—</strong>
+            <small>Uniform collateral decline</small>
+          </article>
+          <article class="metric">
+            <span>Collateral</span><strong id="collateral">—</strong>
+            <small>Enabled collateral only</small>
+          </article>
+          <article class="metric">
+            <span>Debt</span><strong id="debt">—</strong>
+            <small>Stable + variable debt</small>
+          </article>
+        </div>
+
+        <div class="report-grid">
+          <article class="panel">
+            <div class="panel-title"><div><p class="eyebrow">Sensitivity</p><h3>Stress ladder</h3></div><span>not a forecast</span></div>
+            <div id="stress-ladder" class="stress-ladder"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-title"><div><p class="eyebrow">Since last check</p><h3>Risk delta</h3></div></div>
+            <div id="delta" class="delta"></div>
+          </article>
+        </div>
+
+        <article class="panel copilot">
+          <div class="panel-title"><div><p class="eyebrow">Grounded explanation</p><h3>What the evidence says</h3></div><span id="narrative-mode"></span></div>
+          <p id="narrative"></p>
+          <div class="intent-row">
+            <button data-intent="what_changed">What changed?</button>
+            <button data-intent="what_breaks_first">What breaks first?</button>
+            <button data-intent="how_to_verify">How do I verify?</button>
+          </div>
+          <p id="explanation" class="explanation" hidden></p>
+        </article>
+
+        <article class="panel positions">
+          <div class="panel-title"><div><p class="eyebrow">Inputs</p><h3>Position assets</h3></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Asset</th><th>Supply</th><th>Debt</th><th>Price</th><th>Threshold</th></tr></thead><tbody id="positions"></tbody></table></div>
+        </article>
+
+        <details class="receipt panel">
+          <summary><span><small>Evidence receipt</small><b>Block, deployment, assumptions, references</b></span><i>＋</i></summary>
+          <div id="receipt-content"></div>
+        </details>
+        <p class="disclaimer">Wallet Vitals is an analytical aid, not financial advice. Results reflect one indexed evidence snapshot and fixed scenario assumptions.</p>
+      </section>
+
+      <section class="principles shell">
+        <article><b>01</b><h3>Protocol-native</h3><p>Uses Aave balances, indices, rates, prices, and liquidation thresholds.</p></article>
+        <article><b>02</b><h3>Fail closed</h3><p>Stale blocks and indexing errors stop analysis instead of hiding uncertainty.</p></article>
+        <article><b>03</b><h3>Verifiable</h3><p>Every report carries its evidence block, deployment, assumptions, and references.</p></article>
+      </section>
+    </main>
+    <footer class="shell">Built for ETHOnline 2026 · Open source · Read-only by design</footer>
+    <script src="{{ url_for('static', path='/app.js') }}" defer></script>
+  </body>
+</html>
