@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from decimal import Decimal
 from typing import Any, Literal
 
@@ -66,10 +67,56 @@ class RiskNarrator:
         except (httpx.HTTPError, ValueError):
             return fallback, "deterministic"
 
-        output_text = payload.get("output_text") if isinstance(payload, dict) else None
-        if not isinstance(output_text, str) or not output_text.strip():
+        output_text = self._extract_output_text(payload)
+        if not output_text or not self._is_grounded_output(output_text, facts):
             return fallback, "deterministic"
         return output_text.strip()[:1800], "openai"
+
+    @staticmethod
+    def _extract_output_text(payload: Any) -> str | None:
+        if not isinstance(payload, dict):
+            return None
+        direct = payload.get("output_text")
+        if isinstance(direct, str) and direct.strip():
+            return direct.strip()
+        chunks: list[str] = []
+        output = payload.get("output")
+        if not isinstance(output, list):
+            return None
+        for item in output:
+            if not isinstance(item, dict) or item.get("type") != "message":
+                continue
+            content = item.get("content")
+            if not isinstance(content, list):
+                continue
+            for part in content:
+                if not isinstance(part, dict) or part.get("type") != "output_text":
+                    continue
+                text = part.get("text")
+                if isinstance(text, str) and text.strip():
+                    chunks.append(text.strip())
+        return "\n".join(chunks) or None
+
+    @staticmethod
+    def _is_grounded_output(output: str, facts: dict[str, Any]) -> bool:
+        """Reject model-added numeric claims and narratives that omit the source block."""
+        if str(facts["block_number"]) not in output.replace(",", ""):
+            return False
+        fact_text = json.dumps(facts, separators=(",", ":"))
+        pattern = re.compile(r"(?<![A-Za-z])[-+]?\d[\d,]*(?:\.\d+)?")
+
+        def numbers(value: str) -> set[Decimal]:
+            parsed: set[Decimal] = set()
+            for token in pattern.findall(value):
+                try:
+                    parsed.add(Decimal(token.replace(",", "")))
+                except ValueError:
+                    return set()
+            return parsed
+
+        allowed = numbers(fact_text)
+        allowed.update(abs(value) for value in allowed)
+        return numbers(output).issubset(allowed)
 
     @staticmethod
     def _deterministic_summary(facts: dict[str, Any]) -> str:

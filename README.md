@@ -58,7 +58,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The JSON API is documented 
 | `GRAPH_API_KEY` | Yes | Server-only The Graph gateway credential |
 | `GRAPH_SUBGRAPH_ID` | Yes | `Cd2gEDVeqnjBn1hSeqFMitw8Q1iiyV9FYUZkLNRcL87g` (Aave V3 Ethereum) |
 | `GRAPH_MAX_AGE_SECONDS` | No | `900`; analysis fails if the indexed block is older |
-| `OPENAI_API_KEY` | No | Enables grounded narrative wording |
+| `OPENAI_API_KEY` | For AI demo | Optional at runtime; required to demonstrate the AI prize path |
 | `OPENAI_MODEL` | No | `gpt-5.6-luna` |
 | `DATABASE_PATH` | No | `data/wallet_vitals.db` |
 | `REPORT_TTL_HOURS` | No | `24` |
@@ -88,7 +88,7 @@ uv run pytest
 
 Unit and integration tests cover Aave RAY interest math, liquidation-weighted health factor, stress monotonicity, snapshot comparability, Graph freshness/indexing failure, SQLite idempotency, and Web behavior with the data provider disabled. Test fixtures never appear in the production data path.
 
-For a live qualification smoke test, set `GRAPH_API_KEY`, start the app, analyze a public address with a non-empty Ethereum Aave V3 position, and compare the displayed block and health factor with the Aave interface. Never commit `.env` or paste the key into a browser URL.
+For a live qualification smoke test, set `GRAPH_API_KEY` and `OPENAI_API_KEY`, start the app, analyze a public address with a non-empty Ethereum Aave V3 position, and compare the displayed block and health factor with the Aave interface. Confirm the report labels the narrative `AI · evidence locked`. Never commit `.env` or paste either key into a browser URL.
 
 ## Risk model and limitations
 
