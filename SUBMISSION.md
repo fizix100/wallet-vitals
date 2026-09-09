@@ -18,14 +18,14 @@ Every report includes an Evidence Receipt with the Graph subgraph and deployment
 
 ## How it was built
 
-- Python 3.12 and FastAPI for an import-safe async Web/API service.
+- Python 3.12 locally and Python 3.13 in a native Cloudflare Worker, with FastAPI for an import-safe async Web/API service.
 - The Graph Network gateway and the `protocol-v3` Aave V3 Ethereum Subgraph.
 - Aave oracle and pool `eth_call` reads pinned to the same Ethereum block hash, with no transactions.
 - Strict Pydantic evidence/report contracts and Decimal/RAY protocol math.
-- SQLite for idempotent evidence snapshots and 24-hour shareable reports.
+- SQLite locally and independent Cloudflare D1 in production for idempotent evidence snapshots and 24-hour shareable reports.
 - Server-rendered HTML, responsive CSS, and small dependency-free JavaScript.
 - Optional OpenAI Responses API narrative layer with a deterministic fallback.
-- `uv`, Ruff, Pytest, GitHub Actions, and a one-process Docker deployment.
+- `uv`, Ruff, Pytest, GitHub Actions, a reproducible Docker option, and a public Cloudflare deployment with atomic quotas and explanation caching.
 
 ## The Graph integration
 
@@ -35,18 +35,20 @@ Subgraph: <https://thegraph.com/explorer/subgraphs/Cd2gEDVeqnjBn1hSeqFMitw8Q1iiy
 
 ## Track and Partner Prize
 
-- Intended ETHGlobal track: Continuity / Extend Open Source. The participant form previously showed “start from scratch”; actual registration track has not been verified. Do not claim Continuity eligibility is confirmed.
-- Intended Partner Prize: The Graph — Best AI Tooling or AI Use Case with The Graph (Continuity), subject to the registered track and final official eligibility.
+- Selected ETHGlobal track: Continuity / Extend Open Source. Both the project and the single participant were set to Continuity in the submission form on 2026-09-09. Eligibility remains subject to official review.
+- Selected submission type: Partner Prizes only.
+- Selected Partner Prize: The Graph — Best AI Tooling or AI Use Case with The Graph (Continuity), subject to final official eligibility. No unimplemented partner integrations are claimed.
+- Submission status: project text, technical stack, logo, cover, five actual screenshots, prize rationale, and demo video were saved to the form. Final submission is not yet confirmed. The inherited first commit triggers a manual-review flag; the final rules declaration still displays from-scratch wording despite Continuity selection.
 
 The baseline is the tagged upstream commit `upstream-baseline`. Full pre-existing versus event-period disclosure is in `PRE_EXISTING.md`.
 
-## Links to fill after the live gate
+## Submission links
 
 - Public repository: <https://github.com/fizix100/wallet-vitals>
 - Live demo: <https://onebattle.win/wallet-vitals/>
 - Demo video (3m09s): <https://onebattle.win/wallet-vitals/demo>
 - Direct MP4: <https://onebattle.win/wallet-vitals/demo.mp4>
-- Final demo tag: `[pending]`
+- Deployed demo source: `8eddda7d1e9c85c35059163674c15403d383fdf2`
 
 ## Suggested 3-minute demo flow
 

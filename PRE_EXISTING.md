@@ -29,6 +29,7 @@ Event-period work is isolated under `src/wallet_vitals/` and in the event-period
 - An optional OpenAI Responses narrative adapter that receives only precomputed structured facts and falls back to deterministic explanations.
 - A new accountless FastAPI Web interface and JSON API, shareable expiring reports, SQLite persistence, responsive styling, tests, CI, and a single-process container deployment.
 - Provider freshness and indexing-error gates, bounded retry, anonymous per-address cooldown, and analysis concurrency limits.
+- A native Cloudflare Python Worker deployment with independent D1 persistence, atomic public-demo quotas, cached explanations, and expiring report links. The existing OneBattle root website is separate from this application.
 
 Uniswap and Bazantic are not implemented or claimed in the current code. They remain possible gated extensions only after the live core has passed qualification checks.
 
@@ -39,13 +40,15 @@ Files retained or adapted from upstream remain covered by the MIT license and pr
 ## Reproducibility
 
 - Baseline tag: `upstream-baseline`
-- Final demo tag: to be created after the live data and deployment gate passes
+- Deployed demo source: commit `8eddda7d1e9c85c35059163674c15403d383fdf2`
 - Setup instructions: [README — Run locally](README.md#run-locally)
 - Live Graph data source: [README — Why The Graph is load-bearing](README.md#why-the-graph-is-load-bearing)
 - Test command: `uv run ruff check src tests && uv run ruff format --check src tests && uv run pytest`
-- Current verification: see [LIVE_VALIDATION.md](LIVE_VALIDATION.md) for test results and live same-block account checks. Credentials have been validated; public hosting and video remain separate submission gates.
-- Demo video: pending final live deployment and recording
+- Current verification: see [LIVE_VALIDATION.md](LIVE_VALIDATION.md) for test results and live same-block account checks. Public deployment and the demo video are available below; CI passed all 50 tests at the deployed demo commit.
+- Public deployment: <https://onebattle.win/wallet-vitals/>
+- Demo video: <https://onebattle.win/wallet-vitals/demo> (3 minutes 9 seconds, 1080p, genuine public-deployment captures with English synthetic narration and subtitles)
+- Submission configuration: project and single-participant track were set to Continuity in the ETHGlobal form on 2026-09-09. This is not a claim of judge approval or final eligibility. The form flags the inherited first commit for manual review, and its final declaration still displays from-scratch wording; no inaccurate declaration has been accepted.
 
 ## AI assistance disclosure
 
-AI tools were used as development aids for research, coding, tests, and documentation. Product decisions, architecture, integration, validation, and the substantive event-period implementation were reviewed by the participant. Included code is covered by the repository history and automated checks.
+OpenAI Codex assisted with research, implementation, tests, debugging, deployment, documentation, and submission preparation. Repository history and automated checks document the resulting work; this disclosure does not claim an independent human review. The product uses OpenAI Responses for guarded explanations of precomputed facts. The branded cover illustration was AI-generated; product screenshots are genuine application captures. The edited demo uses macOS Samantha synthetic narration and English subtitles, without music or sped-up playback.
