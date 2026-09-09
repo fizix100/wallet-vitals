@@ -1,6 +1,4 @@
-# Wallet Vitals Pre-existing Work Disclosure — Draft
-
-> Replace every bracketed value after the event starts. Keep this file in the public submission repository and link it from the main README.
+# Wallet Vitals Pre-existing Work Disclosure
 
 ## Upstream project
 
@@ -11,7 +9,7 @@
 - License: MIT
 - Audited upstream commit: `c96f64078ffcf1cc3090778591ad4971ac48292f`
 - Fork created: `2026-09-09 after participant acceptance and explicit authorization to begin event-period work`
-- Submission repository baseline commit/tag: `[commit and tag]`
+- Submission repository baseline: commit `c96f64078ffcf1cc3090778591ad4971ac48292f`, annotated tag `upstream-baseline`
 
 ## What existed before ETHOnline 2026
 
@@ -23,16 +21,16 @@ At the audited baseline, the application did not run successfully on our modern 
 
 ## Work created during ETHOnline 2026
 
-The following sections must be completed from the final Git history, demo, and test results:
+Event-period work is isolated under `src/wallet_vitals/` and in the event-period commits. It includes:
 
-- Live The Graph integration and the exact Aave deployment used.
-- Aave position normalization and immutable evidence snapshots.
-- Deterministic risk math, Liquidation Buffer, Risk Delta, and Stress Ladder.
-- Evidence-grounded AI explanation interface.
-- Accountless web interface, JSON API, report persistence, tests, CI, and deployment work.
-- If completed and verified: Uniswap de-risking preview and exact product/API used.
-- If completed and verified: Bazantic gateway, Recipe, and reproducible A/B evidence.
-- Dependency and architecture modernization required for the event product.
+- A server-side The Graph Network client and Aave V3 Ethereum Subgraph adapter for Subgraph ID `Cd2gEDVeqnjBn1hSeqFMitw8Q1iiyV9FYUZkLNRcL87g`. The runtime records the current deployment returned by `_meta` in every receipt.
+- Aave position normalization and evidence snapshots using scaled balances, reserve indices, rates, oracle values, liquidation thresholds, collateral flags, and matching eMode categories.
+- Deterministic RAY/Decimal risk math, Liquidation Buffer, Risk Delta, and a fixed-assumption Stress Ladder.
+- An optional OpenAI Responses narrative adapter that receives only precomputed structured facts and falls back to deterministic explanations.
+- A new accountless FastAPI Web interface and JSON API, shareable expiring reports, SQLite persistence, responsive styling, tests, CI, and a single-process container deployment.
+- Provider freshness and indexing-error gates, bounded retry, anonymous per-address cooldown, and analysis concurrency limits.
+
+Uniswap and Bazantic are not implemented or claimed in the current code. They remain possible gated extensions only after the live core has passed qualification checks.
 
 ## Attribution and code provenance
 
@@ -40,13 +38,14 @@ Files retained or adapted from upstream remain covered by the MIT license and pr
 
 ## Reproducibility
 
-- Baseline tag: `[baseline tag]`
-- Final demo tag: `[final tag]`
-- Setup instructions: `[README section link]`
-- Live Graph data sources: `[README section link]`
-- Test command and result: `[command/result]`
-- Demo video: `[2–4 minute video URL]`
+- Baseline tag: `upstream-baseline`
+- Final demo tag: to be created after the live data and deployment gate passes
+- Setup instructions: [README — Run locally](README.md#run-locally)
+- Live Graph data source: [README — Why The Graph is load-bearing](README.md#why-the-graph-is-load-bearing)
+- Test command: `uv run ruff check src tests && uv run ruff format --check src tests && uv run pytest`
+- Current local result: 12 tests passed on Python 3.12; live provider verification remains credential-gated
+- Demo video: pending final live deployment and recording
 
 ## AI assistance disclosure
 
-AI tools were used as development aids for `[research / coding / tests / documentation — edit as accurate]`. Product decisions, architecture, integration, validation, and the substantive event-period implementation were performed and reviewed by the team. Any AI-generated code included in the repository was tested and remains attributable through Git history.
+AI tools were used as development aids for research, coding, tests, and documentation. Product decisions, architecture, integration, validation, and the substantive event-period implementation were reviewed by the participant. Included code is covered by the repository history and automated checks.
