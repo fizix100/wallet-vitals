@@ -8,9 +8,9 @@
     <link rel="icon" href="{{ url_for('static', path='/favicon.svg') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', path='/app.css') }}">
   </head>
-  <body data-report-id="{{ initial_report_id }}">
+  <body data-report-id="{{ initial_report_id }}" data-base-path="{{ base_path | default('') }}">
     <header class="nav shell">
-      <a class="brand" href="/" aria-label="Wallet Vitals home">
+      <a class="brand" href="{{ base_path | default('') }}/" aria-label="Wallet Vitals home">
         <span class="brand-mark" aria-hidden="true">W</span>
         <span>Wallet Vitals</span>
       </a>

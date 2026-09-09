@@ -1,4 +1,5 @@
 const form = document.querySelector("#analysis-form");
+const basePath = document.body.dataset.basePath || "";
 const reportElement = document.querySelector("#report");
 const loading = document.querySelector("#loading");
 const errorElement = document.querySelector("#error");
@@ -92,7 +93,7 @@ async function loadReport(reportId) {
   errorElement.hidden = true;
   setBusy(true);
   try {
-    const response = await fetch(`/api/reports/${encodeURIComponent(reportId)}`);
+    const response = await fetch(`${basePath}/api/reports/${encodeURIComponent(reportId)}`);
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || "Report could not be loaded.");
     renderReport(payload);
@@ -109,7 +110,7 @@ form.addEventListener("submit", async (event) => {
   reportElement.hidden = true;
   setBusy(true);
   try {
-    const response = await fetch("/api/analyze", {
+    const response = await fetch(`${basePath}/api/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ address: form.address.value.trim() }),
@@ -131,7 +132,7 @@ document.querySelectorAll("[data-intent]").forEach((button) => {
     output.hidden = false;
     output.textContent = "Reading the evidence receipt…";
     try {
-      const response = await fetch(`/api/reports/${encodeURIComponent(activeReportId)}/explain`, {
+      const response = await fetch(`${basePath}/api/reports/${encodeURIComponent(activeReportId)}/explain`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ intent: button.dataset.intent }),
@@ -148,7 +149,7 @@ document.querySelectorAll("[data-intent]").forEach((button) => {
 document.querySelector("#share-report").addEventListener("click", async (event) => {
   if (!activeReportId) return;
   const button = event.currentTarget;
-  const url = `${window.location.origin}/reports/${encodeURIComponent(activeReportId)}`;
+  const url = `${window.location.origin}${basePath}/reports/${encodeURIComponent(activeReportId)}`;
   try {
     await navigator.clipboard.writeText(url);
     button.textContent = "Copied";

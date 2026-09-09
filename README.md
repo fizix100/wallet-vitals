@@ -8,6 +8,13 @@ Wallet Vitals is an accountless, evidence-grounded Aave V3 risk copilot built fo
 
 No sign-up, Telegram account, wallet connection, signature, or private key is required.
 
+## Public deployment
+
+Try [Wallet Vitals](https://onebattle.win/wallet-vitals/) or watch the
+[3-minute demo](https://onebattle.win/wallet-vitals/demo). Public reports expire after 24 hours;
+the hosted demo has a shared daily API budget. See [Cloudflare deployment](cloudflare/README.md)
+for reproducible deployment steps and operational limits.
+
 ## What it does
 
 - Rebuilds current Aave V3 supply and debt from scaled balances, liquidity/borrow indices, rates, and source-block time.

@@ -48,3 +48,29 @@ Browser checks used the actual running local app with live provider responses. D
 - Public RPC availability is not guaranteed. Provider failure stops analysis; it does not serve stale data.
 - The public demo URL, demo video, and actual registered ETHGlobal track remain separate submission gates. These checks do not establish prize qualification or constitute submission.
 - API keys stay server-side in ignored local configuration. None are included in screenshots, the repository, or this document.
+## Cloudflare deployment and video — 2026-09-09
+
+- Live app: https://onebattle.win/wallet-vitals/
+- Public video player: https://onebattle.win/wallet-vitals/demo
+- Public MP4: https://onebattle.win/wallet-vitals/demo.mp4
+- Python 3.13 Worker, compatibility date 2026-09-07; isolated D1 database.
+- Live browser analysis created `VLtqVHNf9XixK4DS7fVu8WkY` at 10:40:17 UTC.
+  Evidence block 25939275, HF 1.1407, Aave pool HF 1.140653315606182338, verification `matched`.
+  Compared with block 25939270: displayed collateral/debt changes $0.00 and HF change 0.
+- Reopening that report through its public `/reports/` URL succeeded without regenerating it.
+- Summary was `openai`; `what_breaks_first` correctly stayed deterministic and identified the
+  20% scenario (HF 0.9125) as the first tested liquidatable scenario.
+- Public address `0x552b42287c4fe1e913ea9a159b69bd7e9b81ec76` produced a real rejected
+  negative `scaledATokenBalance`, captured in the demo without producing a fallback report.
+- Cross-origin analysis POST with Origin `https://example.org` returned HTTP 403.
+- Existing root site still returned HTTP 200 with title `iPhone vs Android · One Battle`.
+- Video: 188.691 seconds, 1920×1080 H.264 + AAC + English subtitle track, 4,728,888 bytes.
+  Browser loaded metadata and English captions with readyState 4. Audio peak -1.6 dB,
+  mean -16.2 dB. The video is an edited walkthrough of genuine captures, not continuous recording.
+- All 50 unit tests passed, including D1 quota bounds, snapshot retention, expired-report
+  protection and verification of the Worker ABI selector constants against keccak.
+
+Deployment diagnostics found Python 3.14 snapshot failures and PublicNode HTTP 429 from
+Cloudflare. The verified deployment pins Python 3.13 and uses dRPC's public endpoint, without
+changing the evidence rules or buying a paid plan. These checks establish behavior at the
+recorded time, not continuous uptime or future values for the sample addresses.

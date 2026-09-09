@@ -20,10 +20,12 @@ class RiskNarrator:
         api_key: str | None,
         model: str,
         timeout_seconds: float = 20.0,
+        transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self._api_key = api_key.strip() if api_key else None
         self._model = model
         self._timeout_seconds = timeout_seconds
+        self._transport = transport
 
     async def report_summary(self, facts: dict[str, Any]) -> tuple[str, NarrativeMode]:
         fallback = self._deterministic_summary(facts)
@@ -57,7 +59,9 @@ class RiskNarrator:
         )
         request_facts = {"intent": intent, "facts": facts}
         try:
-            async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+            async with httpx.AsyncClient(
+                timeout=self._timeout_seconds, transport=self._transport
+            ) as client:
                 response = await client.post(
                     "https://api.openai.com/v1/responses",
                     headers={

@@ -1,0 +1,56 @@
+[
+  {
+    "capture": "01-home.png",
+    "title": "Risk, with receipts.",
+    "callout": "One public address. A protocol-native diagnosis you can independently verify.",
+    "narration": "This is Wallet Vitals, an evidence grounded risk copilot for Aave V3 on Ethereum. This walkthrough uses the real application deployed on onebattle dot win. Paste a public wallet address to begin. There is no login, wallet connection, signature, or transaction."
+  },
+  {
+    "capture": "02-report.png",
+    "title": "A real position.",
+    "callout": "Health factor 1.1407. Warning is not liquidation. Snapshot values, not a live guarantee.",
+    "narration": "Here is the result for a public example address. The reconstructed health factor is one point one four zero seven, and the liquidation buffer is twelve point three three percent. The green verification line confirms that the position matches Aave's own account data at the same evidence block."
+  },
+  {
+    "capture": "02-report.png",
+    "title": "Test the boundary.",
+    "callout": "5% and 10%: danger. 20%: liquidatable. Debt value is held fixed.",
+    "narration": "The stress ladder tests five, ten, and twenty percent declines in collateral prices. The first two scenarios are in the danger band. Only the twenty percent scenario crosses the tested liquidation boundary. These are sensitivity tests with fixed debt value, not price forecasts or a promise of safety."
+  },
+  {
+    "capture": "02-report.png",
+    "title": "What changed?",
+    "callout": "Two real indexed blocks. Comparable snapshots. No invented movement.",
+    "narration": "A second check compares two genuinely different indexed blocks. In this example, collateral and debt are unchanged at the displayed precision, and the reported health factor change is zero. The application shows that honestly. On a first check, it explicitly says that no baseline is available."
+  },
+  {
+    "capture": "04-receipt.png",
+    "title": "Show the evidence.",
+    "callout": "The Graph deployment, block, query time and rule version travel with the report.",
+    "narration": "Open the evidence receipt to inspect the source. The Graph supplies indexed positions and the basis for snapshot comparisons. The receipt includes its deployment identifier, the exact Ethereum block, query time, and calculation rules. These details make the result inspectable instead of asking a judge to trust a generated explanation."
+  },
+  {
+    "capture": "05-contract-proof.png",
+    "title": "One block. Two checks.",
+    "callout": "Oracle prices and pool account data are pinned to the same block hash.",
+    "narration": "Prices come from Aave's oracle, read at the same block hash as the position evidence. The application reconstructs the account and compares it with the pool contract. A mismatch stops analysis. The receipt also states the assumptions, and makes clear that reading an oracle does not establish each underlying feed's update time."
+  },
+  {
+    "capture": "03-explanation.png",
+    "title": "Explain, don't invent.",
+    "callout": "AI explains supplied facts. Critical liquidation-boundary answers stay deterministic.",
+    "narration": "The optional AI layer explains supplied evidence rather than calculating risk. The label tells you whether an explanation came from AI or deterministic logic. Asking what breaks first produces a deterministic answer, so a danger label cannot be confused with the actual liquidation boundary. The application never signs or executes trades."
+  },
+  {
+    "capture": "06-fail-closed.png",
+    "title": "Fail closed.",
+    "callout": "Real invalid indexed balance. Analysis stops. No fabricated fallback report.",
+    "narration": "Here is a real failure case from another public address. Its indexed data contains a negative scaled balance, so the application refuses to produce a report. Stale blocks, indexing errors, unsupported e Mode, and account mismatches are also rejected. The Graph integration is part of the evidence pipeline, not a decorative API call."
+  },
+  {
+    "capture": "01-home.png",
+    "title": "Try it yourself.",
+    "callout": "onebattle.win/wallet-vitals/\n\nSource: github.com/fizix100/wallet-vitals",
+    "narration": "Wallet Vitals is live and open source. Public reports have a twenty four hour lifetime, and the demo has bounded API usage. Open the application, run your own read only check, and inspect the receipt. Wallet Vitals turns an opaque risk score into a diagnosis with evidence."
+  }
+]

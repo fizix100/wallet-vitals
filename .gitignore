@@ -11,3 +11,14 @@ __pycache__/
 data/
 dist/
 htmlcov/
+node_modules/
+.wrangler/
+.dev.vars
+cloudflare/wallet_vitals/
+cloudflare/src/wallet_vitals/
+.venv-workers/
+python_modules/
+cloudflare/public/
+demo-video/render/
+*.mp4
+*.wav

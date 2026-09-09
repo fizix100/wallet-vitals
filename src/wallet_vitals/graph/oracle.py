@@ -16,14 +16,21 @@ from decimal import Decimal, localcontext
 from typing import Any
 
 import httpx
-from eth_utils import is_address, keccak
 
 from wallet_vitals.domain.models import EvidenceSnapshot, OnchainEvidence
 from wallet_vitals.domain.risk import calculate_snapshot_risk, severity_for
 from wallet_vitals.graph.errors import GraphResponseError, GraphTransportError
 
 ADDRESSES_PROVIDER = "0x2f39d218133afab8f2b819b1066c7e434ad94e9e"
-ZERO_ADDRESS = "0x" + "0" * 40
+SELECTORS = {
+    "getPool()": "026b1d5f",
+    "getPriceOracle()": "fca513a8",
+    "BASE_CURRENCY()": "e19f4700",
+    "BASE_CURRENCY_UNIT()": "8c89b64f",
+    "getUserAccountData(address)": "bf92857c",
+    "getUserEMode(address)": "eddf1b79",
+    "getAssetPrice(address)": "b3596f07",
+}
 
 
 def _words(value: Any, count: int) -> list[int]:
@@ -98,7 +105,7 @@ class AaveOracleClient:
         block_timestamp: int,
         graph_block_hash: str | None,
     ) -> OracleSnapshot:
-        if not is_address(address) or any(not is_address(asset) for asset in assets):
+        if any(not re.fullmatch(r"0x[0-9a-fA-F]{40}", item) for item in [address, *assets]):
             raise GraphResponseError("Invalid address in oracle evidence request.")
         chain, block = await asyncio.gather(
             self._rpc("eth_chainId", []),
@@ -125,7 +132,7 @@ class AaveOracleClient:
         reference = {"blockHash": block_hash, "requireCanonical": True}
 
         async def call(contract: str, signature: str, argument: str | None = None) -> Any:
-            data = "0x" + keccak(text=signature)[:4].hex()
+            data = "0x" + SELECTORS[signature]
             if argument is not None:
                 data += argument[2:].lower().rjust(64, "0")
             return await self._rpc("eth_call", [{"to": contract, "data": data}, reference])

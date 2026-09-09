@@ -43,8 +43,9 @@ The baseline is the tagged upstream commit `upstream-baseline`. Full pre-existin
 ## Links to fill after the live gate
 
 - Public repository: <https://github.com/fizix100/wallet-vitals>
-- Live demo: `[pending]`
-- Demo video (2–4 minutes): `[pending]`
+- Live demo: <https://onebattle.win/wallet-vitals/>
+- Demo video (3m09s): <https://onebattle.win/wallet-vitals/demo>
+- Direct MP4: <https://onebattle.win/wallet-vitals/demo.mp4>
 - Final demo tag: `[pending]`
 
 ## Suggested 3-minute demo flow

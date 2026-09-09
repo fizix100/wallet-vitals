@@ -49,3 +49,8 @@ h1 { margin: 0; font-family: var(--serif); font-size: clamp(46px, 7vw, 78px); li
 .metric-grid { clear: both; }
 .receipt li { overflow-wrap: anywhere; }
 @media(max-width:510px) { .address-form input { width: 100%; } }
+.demo-player { display: block; width: 100%; height: auto; margin: 28px 0; background: #123f36; }
+.demo-layout { padding-block: 42px; }
+.demo-layout h1 { font-size: clamp(38px, 5vw, 58px); }
+.demo-layout p { line-height: 1.6; color: var(--muted); }
+.demo-layout a { color: var(--green); }

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import secrets
 from datetime import UTC, datetime, timedelta
-from typing import Any
-
-from eth_utils import is_address, to_normalized_address
+from typing import TYPE_CHECKING, Any
 
 from wallet_vitals.ai.narrator import RiskNarrator
 from wallet_vitals.domain.models import ExplainResponse, RiskReport
@@ -19,7 +18,9 @@ from wallet_vitals.domain.risk import (
 )
 from wallet_vitals.graph.aave import AaveV3Subgraph
 from wallet_vitals.graph.errors import GraphConfigurationError
-from wallet_vitals.storage.sqlite import SQLiteStore
+
+if TYPE_CHECKING:
+    from wallet_vitals.storage.sqlite import SQLiteStore
 
 
 class InvalidAddressError(ValueError):
@@ -58,9 +59,9 @@ class AnalysisService:
     @staticmethod
     def normalize_address(address: str) -> str:
         candidate = address.strip()
-        if not is_address(candidate):
+        if not re.fullmatch(r"0x[0-9a-fA-F]{40}", candidate):
             raise InvalidAddressError("Enter a valid 20-byte Ethereum address.")
-        return to_normalized_address(candidate)
+        return candidate.lower()
 
     async def analyze(self, raw_address: str) -> RiskReport:
         address = self.normalize_address(raw_address)
