@@ -1,5 +1,7 @@
 # Wallet Vitals
 
+[![CI](https://github.com/fizix100/wallet-vitals/actions/workflows/ci.yml/badge.svg)](https://github.com/fizix100/wallet-vitals/actions/workflows/ci.yml)
+
 > Know your liquidation risk before the market does.
 
 Wallet Vitals is an accountless, evidence-grounded Aave V3 risk copilot built for ETHOnline 2026. Paste a public Ethereum address to get deterministic health metrics, a uniform-price Stress Ladder, comparable Risk Delta, and an Evidence Receipt that identifies the exact indexed source behind the report.
@@ -39,7 +41,7 @@ Optional grounded OpenAI wording (fallback always available)
 Requirements: Python 3.12, [`uv`](https://docs.astral.sh/uv/), and a The Graph API key with access limited to the Aave Subgraph where possible.
 
 ```bash
-git clone <YOUR_FORK_URL>
+git clone https://github.com/fizix100/wallet-vitals.git
 cd wallet-vitals
 cp .env.example .env
 # Set GRAPH_API_KEY in .env. OPENAI_API_KEY is optional.
