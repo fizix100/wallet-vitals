@@ -105,10 +105,12 @@ class AaveV3Subgraph:
         client: GraphClient,
         subgraph_id: str,
         max_block_age_seconds: int = 900,
+        max_price_age_seconds: int = 86400,
     ) -> None:
         self._client = client
         self._subgraph_id = subgraph_id
         self._max_block_age_seconds = max_block_age_seconds
+        self._max_price_age_seconds = max_price_age_seconds
 
     async def fetch_snapshot(self, address: str) -> EvidenceSnapshot:
         queried_at = datetime.now(UTC)
@@ -151,20 +153,45 @@ class AaveV3Subgraph:
             reserves = user_data.get("reserves")
             if not isinstance(reserves, list):
                 raise GraphResponseError("Missing reserve positions in Aave data.")
+            if len(reserves) >= 100:
+                raise GraphResponseError(
+                    "Reserve query reached its limit; evidence may be incomplete."
+                )
             for item in reserves:
                 position = _mapping(item, "user reserve")
+                raw_balances = [
+                    _integer(position.get(field), field)
+                    for field in (
+                        "scaledATokenBalance",
+                        "scaledVariableDebt",
+                        "principalStableDebt",
+                    )
+                ]
+                if not any(raw_balances):
+                    continue
                 reserve = _mapping(position.get("reserve"), "reserve")
                 price = reserve.get("price")
                 if price is None:
-                    warnings.append(
-                        f"Skipped {str(reserve.get('symbol') or 'unknown')[:24]}: no oracle price."
+                    raise GraphResponseError(
+                        "Missing oracle price; position analysis is incomplete."
                     )
-                    continue
                 price_data = _mapping(price, "reserve price")
+                price_updated = _integer(price_data.get("lastUpdateTimestamp"), "price timestamp")
+                if block_timestamp_raw - price_updated > self._max_price_age_seconds:
+                    raise GraphStaleDataError(
+                        "An active asset's indexed oracle price is more than 24 hours old; "
+                        "risk analysis was stopped. The Graph block is current but its "
+                        "price data is not sufficiently fresh."
+                    )
+                if price_updated > block_timestamp_raw:
+                    raise GraphResponseError("Oracle timestamp is later than the evidence block.")
                 oracle = _mapping(price_data.get("oracle"), "price oracle")
                 base_unit = _integer(oracle.get("baseCurrencyUnit"), "oracle base unit")
-                if base_unit <= 0:
-                    raise GraphResponseError("The Aave oracle base currency unit is invalid.")
+                if base_unit != 10**8 or str(oracle.get("baseCurrency")).lower() not in {
+                    "usd",
+                    "0x0000000000000000000000000000000000000000",
+                }:
+                    raise GraphResponseError("Unsupported Aave oracle currency or unit.")
 
                 last_update = _integer(reserve.get("lastUpdateTimestamp"), "reserve last update")
                 elapsed = max(0, block_timestamp_raw - last_update)

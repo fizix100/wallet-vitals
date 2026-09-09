@@ -95,3 +95,24 @@ async def test_subgraph_rejects_stale_or_broken_index() -> None:
     adapter = AaveV3Subgraph(FakeGraphClient(payload), "subgraph-id")  # type: ignore[arg-type]
     with pytest.raises(GraphIndexingError):
         await adapter.fetch_snapshot("0x1111111111111111111111111111111111111111")
+
+
+@pytest.mark.asyncio
+async def test_current_block_does_not_hide_stale_asset_price() -> None:
+    timestamp = int(datetime.now(UTC).timestamp())
+    payload = graph_payload(timestamp)
+    payload["user"]["reserves"][0]["reserve"]["price"]["lastUpdateTimestamp"] = timestamp - 86401
+    adapter = AaveV3Subgraph(FakeGraphClient(payload), "subgraph-id")
+    with pytest.raises(GraphStaleDataError, match="oracle price"):
+        await adapter.fetch_snapshot("0x1111111111111111111111111111111111111111")
+
+
+@pytest.mark.asyncio
+async def test_missing_asset_price_stops_analysis() -> None:
+    from wallet_vitals.graph.errors import GraphResponseError
+
+    payload = graph_payload(int(datetime.now(UTC).timestamp()))
+    payload["user"]["reserves"][0]["reserve"]["price"] = None
+    adapter = AaveV3Subgraph(FakeGraphClient(payload), "subgraph-id")
+    with pytest.raises(GraphResponseError, match="Missing oracle price"):
+        await adapter.fetch_snapshot("0x1111111111111111111111111111111111111111")

@@ -8,6 +8,13 @@ def test_negative_stress_values_can_be_explained_as_declines() -> None:
     )
 
 
+def test_invented_deployment_is_rejected() -> None:
+    assert not RiskNarrator._is_grounded_output(
+        "At block 123, deployment QmWrongSource.",
+        {"block_number": 123, "deployment": "QmCorrectSource"},
+    )
+
+
 def test_fallback_formats_serialized_delta() -> None:
     answer = RiskNarrator._deterministic_explanation(
         {

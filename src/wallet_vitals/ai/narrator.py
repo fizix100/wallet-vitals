@@ -43,7 +43,10 @@ class RiskNarrator:
             "You are Wallet Vitals, a cautious Aave risk explainer. Use only the supplied "
             "structured facts. Never calculate or alter a number. Mention the evidence block. "
             "Do not predict prices, give financial advice, or suggest a transaction. Write one "
-            "short paragraph in plain English. If a fact is unavailable, say so."
+            "short paragraph in plain English without Markdown formatting. Mention the block "
+            "number but do not reproduce deployment hashes or long position identifiers; "
+            "refer readers to the Evidence Receipt. Describe the health factor as an indexed "
+            "estimate. If a fact is unavailable, say so."
         )
         request_facts = {"intent": intent, "facts": facts}
         try:
@@ -103,6 +106,9 @@ class RiskNarrator:
         if str(facts["block_number"]) not in output.replace(",", ""):
             return False
         fact_text = json.dumps(facts, separators=(",", ":"))
+        for identifier in re.findall(r"\b(?:Qm[A-Za-z0-9]+|0x[a-fA-F0-9]+)\b", output):
+            if identifier not in fact_text:
+                return False
         pattern = re.compile(r"(?<![A-Za-z])[-+]?\d[\d,]*(?:\.\d+)?")
 
         def numbers(value: str) -> set[Decimal]:
