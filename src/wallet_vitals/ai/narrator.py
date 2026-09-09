@@ -10,8 +10,8 @@ import httpx
 NarrativeMode = Literal["openai", "deterministic"]
 
 
-def _number(value: Decimal | None) -> str:
-    return "not applicable" if value is None else format(value, "f")
+def _number(value: Decimal | str | None) -> str:
+    return "not applicable" if value is None else format(Decimal(value), "f")
 
 
 class RiskNarrator:
@@ -115,7 +115,7 @@ class RiskNarrator:
             return parsed
 
         allowed = numbers(fact_text)
-        allowed.update(abs(value) for value in allowed)
+        allowed.update({abs(value) for value in allowed})
         return numbers(output).issubset(allowed)
 
     @staticmethod

@@ -14,11 +14,9 @@ async def test_graph_client_keeps_key_out_of_url_and_parses_data() -> None:
         requests.append(request)
         return httpx.Response(200, json={"data": {"ok": True}})
 
-    client = GraphClient("https://example.test/subgraphs/id/abc", "secret-key")
-    await client._client.aclose()
-    client._client = httpx.AsyncClient(
-        base_url="https://example.test/subgraphs/id/abc",
-        headers={"Authorization": "Bearer secret-key"},
+    client = GraphClient(
+        "https://example.test/subgraphs/id/abc",
+        "secret-key",
         transport=httpx.MockTransport(handler),
     )
 
@@ -26,5 +24,6 @@ async def test_graph_client_keeps_key_out_of_url_and_parses_data() -> None:
     await client.close()
 
     assert data == {"ok": True}
+    assert str(requests[0].url) == "https://example.test/subgraphs/id/abc"
     assert "secret-key" not in str(requests[0].url)
     assert requests[0].headers["Authorization"] == "Bearer secret-key"

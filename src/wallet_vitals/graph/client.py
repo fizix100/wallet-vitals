@@ -19,17 +19,20 @@ class GraphClient:
         api_key: str,
         timeout_seconds: float = 15.0,
         max_attempts: int = 3,
+        transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         if not api_key.strip():
             raise GraphConfigurationError("GRAPH_API_KEY is required to query the Aave subgraph.")
+        self._endpoint = endpoint.rstrip("/")
+        self._api_key = api_key
         self._client = httpx.AsyncClient(
-            base_url=endpoint,
             headers={
                 "Authorization": f"Bearer {api_key}",
                 "Accept": "application/json",
                 "User-Agent": "wallet-vitals/0.1",
             },
             timeout=timeout_seconds,
+            transport=transport,
         )
         self._max_attempts = max_attempts
 
@@ -41,7 +44,7 @@ class GraphClient:
         for attempt in range(self._max_attempts):
             try:
                 response = await self._client.post(
-                    "",
+                    self._endpoint,
                     json={"query": document, "variables": variables},
                 )
                 response.raise_for_status()
@@ -73,8 +76,12 @@ class GraphClient:
             raise GraphResponseError("The Graph gateway returned an unexpected response.")
         errors = payload.get("errors")
         if errors:
+            if not isinstance(errors, list):
+                raise GraphResponseError("The Graph query failed.")
             messages = [
-                str(item.get("message", "unknown GraphQL error"))
+                str(item.get("message", "unknown GraphQL error")).replace(
+                    self._api_key, "[redacted]"
+                )
                 for item in errors[:3]
                 if isinstance(item, dict)
             ]

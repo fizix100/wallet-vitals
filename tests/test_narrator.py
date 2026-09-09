@@ -1,6 +1,30 @@
 from wallet_vitals.ai.narrator import RiskNarrator
 
 
+def test_negative_stress_values_can_be_explained_as_declines() -> None:
+    assert RiskNarrator._is_grounded_output(
+        "At block 123, test a 20% collateral decline.",
+        {"block_number": 123, "collateral_shock_pct": -20},
+    )
+
+
+def test_fallback_formats_serialized_delta() -> None:
+    answer = RiskNarrator._deterministic_explanation(
+        {
+            "block_number": 124,
+            "risk_delta": {
+                "status": "comparable",
+                "previous_block_number": 123,
+                "collateral_usd_change": "0.00",
+                "debt_usd_change": "1.00",
+                "health_factor_change": "-0.0010",
+            },
+        },
+        "what_changed",
+    )
+    assert "-0.0010" in answer
+
+
 def test_responses_output_text_extraction() -> None:
     payload = {
         "output": [
