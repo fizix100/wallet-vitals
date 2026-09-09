@@ -17,6 +17,7 @@ No sign-up, Telegram account, wallet connection, signature, or private key is re
 - Reads Aave's own oracle at the indexed block hash and cross-checks the reconstructed account against `getUserAccountData` at that same block.
 - Attaches the Graph deployment, source block/time, query time, rules version, scenario assumptions, position references, oracle/pool addresses, and contract cross-check to every report.
 - Uses OpenAI only to explain locked, structured facts. If the model is unconfigured or unavailable, the complete report still works with deterministic explanations.
+- Keeps the boundary-critical “What breaks first?” answer deterministic, so entering a `danger` band cannot be confused with reaching liquidation by model wording.
 - Fails closed on stale/indexing-error blocks, malformed data, RPC failures, block mismatches, unsupported eMode, and materially inconsistent indexed accounts.
 
 ## Why The Graph is load-bearing

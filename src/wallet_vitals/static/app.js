@@ -138,7 +138,7 @@ document.querySelectorAll("[data-intent]").forEach((button) => {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.detail || "Explanation failed.");
-      output.textContent = payload.answer;
+      output.textContent = `${payload.mode === "deterministic" ? "Deterministic" : "AI"} · ${payload.answer}`;
     } catch (error) {
       output.textContent = error.message || "Explanation failed.";
     }

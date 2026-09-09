@@ -1,3 +1,7 @@
+from unittest.mock import AsyncMock
+
+import pytest
+
 from wallet_vitals.ai.narrator import RiskNarrator
 
 
@@ -58,3 +62,45 @@ def test_grounding_guard_rejects_new_numbers() -> None:
         "At block 123 the health factor will reach 9.99.", facts
     )
     assert not RiskNarrator._is_grounded_output("The position is currently healthy.", facts)
+
+
+@pytest.mark.asyncio
+async def test_liquidation_breakpoint_does_not_depend_on_ai_wording() -> None:
+    narrator = RiskNarrator("test-key", "unused")
+    narrator._generate = AsyncMock(side_effect=AssertionError("Must not ask AI for this boundary"))
+    answer, mode = await narrator.explain(
+        {
+            "block_number": 123,
+            "health_factor": "1.1407",
+            "stress_ladder": [
+                {"collateral_shock_pct": -5, "severity": "danger", "health_factor": "1.0836"},
+                {"collateral_shock_pct": -10, "severity": "danger", "health_factor": "1.0266"},
+                {
+                    "collateral_shock_pct": -20,
+                    "severity": "liquidatable",
+                    "health_factor": "0.9125",
+                },
+            ],
+        },
+        "what_breaks_first",
+    )
+    assert mode == "deterministic"
+    assert "first tested liquidatable scenario is a 20%" in answer
+    assert "block 123" in answer
+    narrator._generate.assert_not_awaited()
+
+
+def test_summary_does_not_treat_rounded_dust_debt_as_no_debt() -> None:
+    answer = RiskNarrator._deterministic_summary(
+        {
+            "block_number": 123,
+            "health_factor": "0.9500",
+            "total_debt_usd": "0.00",
+            "severity": "liquidatable",
+            "liquidation_buffer_pct": None,
+            "evidence_refs": ["reference"],
+        }
+    )
+    assert "No Aave debt" not in answer
+    assert "None%" not in answer
+    assert "no positive" in answer

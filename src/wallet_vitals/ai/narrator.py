@@ -31,6 +31,10 @@ class RiskNarrator:
 
     async def explain(self, facts: dict[str, Any], intent: str) -> tuple[str, NarrativeMode]:
         fallback = self._deterministic_explanation(facts, intent)
+        if intent == "what_breaks_first":
+            # Numeric grounding alone cannot stop a model from confusing "danger" with
+            # "liquidatable". Keep this boundary-critical answer entirely deterministic.
+            return fallback, "deterministic"
         return await self._generate(facts, intent, fallback)
 
     async def _generate(
@@ -47,7 +51,9 @@ class RiskNarrator:
             "number but do not reproduce deployment hashes or long position identifiers; "
             "refer readers to the Evidence Receipt. Describe the health factor as a reconstructed "
             "snapshot metric, not a current guarantee. Positions are indexed by The Graph; "
-            "prices come from Aave's oracle at that same block. If a fact is unavailable, say so."
+            "prices come from Aave's oracle at that same block. Danger and warning do not mean "
+            "liquidatable; only the supplied liquidatable severity marks a liquidation boundary. "
+            "If a fact is unavailable, say so."
         )
         request_facts = {"intent": intent, "facts": facts}
         try:
@@ -127,17 +133,22 @@ class RiskNarrator:
 
     @staticmethod
     def _deterministic_summary(facts: dict[str, Any]) -> str:
-        debt = Decimal(str(facts["total_debt_usd"]))
         block = facts["block_number"]
-        if debt == 0:
+        if facts["health_factor"] is None:
             return (
                 f"No Aave debt was found in the indexed position at block {block}. "
                 "Stress health factors are therefore not applicable."
             )
+        buffer = facts["liquidation_buffer_pct"]
+        buffer_text = (
+            "There is no positive uniform-collateral liquidation buffer. "
+            if buffer is None
+            else f"The uniform-collateral liquidation buffer is {buffer}%. "
+        )
         return (
             f"At evidence block {block}, the position has a health factor of "
             f"{facts['health_factor']} and is classified as {facts['severity']}. "
-            f"The uniform-collateral liquidation buffer is {facts['liquidation_buffer_pct']}%. "
+            f"{buffer_text}"
             f"The result is grounded in {len(facts['evidence_refs'])} position evidence "
             "references. This is a sensitivity calculation, not a price forecast."
         )
@@ -168,8 +179,11 @@ class RiskNarrator:
             first = next((item for item in ladder if item["severity"] == "liquidatable"), None)
             if first:
                 return (
-                    f"In this fixed-assumption ladder, the first tested liquidatable scenario is "
-                    f"a {abs(first['collateral_shock_pct'])}% uniform collateral decline."
+                    f"At evidence block {block}, the first tested liquidatable scenario is "
+                    f"a {abs(first['collateral_shock_pct'])}% uniform collateral decline "
+                    f"(health factor {first['health_factor']}). Danger and warning labels do not "
+                    "mean the liquidation boundary has been reached. Debt USD value is held "
+                    "constant; this is a sensitivity test, not a forecast."
                 )
             return (
                 "None of the tested 5%, 10%, or 20% uniform collateral declines makes the "

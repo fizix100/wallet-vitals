@@ -35,7 +35,9 @@ An empty-position control (`0xd8da6bf26964af9d7eed9e03e53415d37aa96045`) matched
 
 ## Local checks and screenshots
 
-`uv run ruff check src tests`, `uv run ruff format --check src tests`, `uv run pytest`, and `git diff --check` passed. **44 tests passed** on Python 3.12. The wheel and source distribution also built successfully with `uv build`.
+`uv run ruff check src tests`, `uv run ruff format --check src tests`, `uv run pytest`, and `git diff --check` passed. **46 tests passed** on Python 3.12. The wheel and source distribution also built successfully with `uv build`.
+
+A final live check at block `25939108` again passed the account cross-check; the summary used the deterministic fallback, while an explanation reached OpenAI. That explanation confused entry into `danger` with the first liquidation boundary even though its numbers were grounded. “What breaks first?” is therefore now answered deterministically from the first `liquidatable` scenario, with a regression test that forbids an AI call for that intent. Other optional AI wording remains subject to numeric/identifier checks, not a claim of perfect semantic validation. Each explanation now labels its actual generation mode.
 
 Browser checks used the actual running local app with live provider responses. Desktop width `1280` and mobile width `390` had no document-level horizontal overflow. The metric grid occupied the full report container at both widths. Three unaltered product screenshots are in [submission-assets](submission-assets/README.md); these are not generated/mock metrics. The separate cover is disclosed AI-generated artwork.
 
